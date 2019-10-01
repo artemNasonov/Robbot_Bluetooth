@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -16,6 +17,9 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,6 +35,10 @@ public class MainActivity extends AppCompatActivity {
     BluetoothAdapter bluetoothAdapter;
 
     Set<BluetoothDevice> pairedDevices;
+
+    Method method;
+
+    BluetoothSocket socketToRobbo;
 
     private final static int REQUEST_ENABLE_BT = 1;
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -152,6 +160,22 @@ public class MainActivity extends AppCompatActivity {
                 bluetoothAdapter.cancelDiscovery();
                 Toast.makeText(MainActivity.this, "discovery canceled", Toast.LENGTH_SHORT).show();
 //                    mListViewPairedDevices.setVisibility(View.GONE);
+                String robbotNameAndAddress = pairedDevicesArrayAdapter.getItem(position);
+                BluetoothDevice deviceRobbot = bluetoothAdapter.getRemoteDevice(robbotNameAndAddress.substring(robbotNameAndAddress.length()-17));
+                try {
+                    method = deviceRobbot.getClass().getMethod("createRfcommSocket", int.class);
+//                    deviceRobbot.createRfcommSocket();
+                    socketToRobbo = (BluetoothSocket) method.invoke(deviceRobbot, 1);
+                    socketToRobbo.close();
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
