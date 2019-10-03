@@ -1,15 +1,15 @@
 package com.example.robbot;
 
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -17,13 +17,11 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import androidx.appcompat.app.AppCompatActivity;
+
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
-
     private Button find_robbot;
     private Button button_up;
     private Button button_down;
@@ -36,9 +34,9 @@ public class MainActivity extends AppCompatActivity {
 
     Set<BluetoothDevice> pairedDevices;
 
-    Method method;
+    BluetoothConnectThread bluetoothConnectThread = null;
 
-    BluetoothSocket socketToRobbo;
+    private Handler handler;
 
     private final static int REQUEST_ENABLE_BT = 1;
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -77,8 +75,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(broadcastReceiver);
+        bluetoothConnectThread.cancel();
     }
 
+    @SuppressLint("HandlerLeak")
     private void initButtonsAndOther(){
         find_robbot = findViewById(R.id.find_robbot);
         button_up = findViewById(R.id.up_button);
@@ -86,6 +86,15 @@ public class MainActivity extends AppCompatActivity {
         button_left = findViewById(R.id.left_button);
         button_right = findViewById(R.id.right_button);
         mListViewPairedDevices = findViewById(R.id.pairedlist);
+        handler = new Handler(){
+            @Override
+            public void handleMessage(Message msg){
+                super.handleMessage(msg);
+                if(msg.what == 1){
+                    Toast.makeText(MainActivity.this, msg.obj.toString(), Toast.LENGTH_LONG).show();
+                }
+            }
+        };
     }
 
     private void addListenersToButtons(){
@@ -93,12 +102,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if(checkBluetoothEnabled()) showPairedDevices();
+                else {
+                    Toast.makeText(MainActivity.this, "Turn bluetooth on!!!", Toast.LENGTH_SHORT).show();
+                }
             }
         });
         button_down.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Toast.makeText(MainActivity.this, R.string.go_back, Toast.LENGTH_SHORT).show();
+                if(bluetoothConnectThread!=null) bluetoothConnectThread.inOutBluetoothThread.write("с".getBytes());
             }
         });
         button_up.setOnClickListener(new View.OnClickListener() {
@@ -129,6 +142,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
     }
+
+    @SuppressLint("HardwareIds")
     private void askForTurnBluetoothUp(){
         if(!bluetoothAdapter.isEnabled()){
             Toast.makeText(MainActivity.this, "Turn your bluetooth device on!", Toast.LENGTH_SHORT).show();
@@ -162,20 +177,8 @@ public class MainActivity extends AppCompatActivity {
 //                    mListViewPairedDevices.setVisibility(View.GONE);
                 String robbotNameAndAddress = pairedDevicesArrayAdapter.getItem(position);
                 BluetoothDevice deviceRobbot = bluetoothAdapter.getRemoteDevice(robbotNameAndAddress.substring(robbotNameAndAddress.length()-17));
-                try {
-                    method = deviceRobbot.getClass().getMethod("createRfcommSocket", int.class);
-//                    deviceRobbot.createRfcommSocket();
-                    socketToRobbo = (BluetoothSocket) method.invoke(deviceRobbot, 1);
-                    socketToRobbo.close();
-                } catch (NoSuchMethodException e) {
-                    e.printStackTrace();
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                } catch (InvocationTargetException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                bluetoothConnectThread = new BluetoothConnectThread(deviceRobbot, handler);
+                bluetoothConnectThread.start();
             }
         });
     }
