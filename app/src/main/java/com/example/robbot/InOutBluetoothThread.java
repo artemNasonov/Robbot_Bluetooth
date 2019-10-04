@@ -31,7 +31,7 @@ public class InOutBluetoothThread extends Thread {
         while (true){
             try {
                 bytes = in.read(buffer);
-                handler.obtainMessage(1, bytes, -1, buffer);
+                handler.sendMessage(handler.obtainMessage(1, bytes, -1, buffer));
             } catch (IOException e) {
                 e.printStackTrace();
                 break;

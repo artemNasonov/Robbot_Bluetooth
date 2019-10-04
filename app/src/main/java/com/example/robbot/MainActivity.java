@@ -14,11 +14,13 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.Arrays;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
@@ -32,9 +34,12 @@ public class MainActivity extends AppCompatActivity {
 
     BluetoothAdapter bluetoothAdapter;
 
+    Double power = 0.0;
+
     Set<BluetoothDevice> pairedDevices;
 
     BluetoothConnectThread bluetoothConnectThread = null;
+    EditText editText;
 
     private Handler handler;
 
@@ -75,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(broadcastReceiver);
-        bluetoothConnectThread.cancel();
+        if(bluetoothConnectThread!=null) bluetoothConnectThread.cancel();
     }
 
     @SuppressLint("HandlerLeak")
@@ -85,16 +90,20 @@ public class MainActivity extends AppCompatActivity {
         button_down = findViewById(R.id.down_button);
         button_left = findViewById(R.id.left_button);
         button_right = findViewById(R.id.right_button);
+        editText = findViewById(R.id.power);
         mListViewPairedDevices = findViewById(R.id.pairedlist);
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg){
                 super.handleMessage(msg);
                 if(msg.what == 1){
-                    Toast.makeText(MainActivity.this, msg.obj.toString(), Toast.LENGTH_LONG).show();
+                    byte[] buffer;
+                    buffer = (byte[]) msg.obj;
+                    Toast.makeText(MainActivity.this, new String(buffer), Toast.LENGTH_LONG).show();
                 }
             }
         };
+        handler.sendEmptyMessage(0);
     }
 
     private void addListenersToButtons(){
@@ -108,10 +117,21 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         button_down.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("DefaultLocale")
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, R.string.go_back, Toast.LENGTH_SHORT).show();
-                if(bluetoothConnectThread!=null) bluetoothConnectThread.inOutBluetoothThread.write("с".getBytes());
+                power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
+                power = power*63+63;
+                Integer intPower = power.intValue();
+                byte[] buffer = new byte[4];
+                buffer[0] = "c".getBytes()[0];
+                buffer[1] = intPower.byteValue();
+                buffer[2] = intPower.byteValue();
+                buffer[3] = "$".getBytes()[0];
+                Toast.makeText(MainActivity.this, Arrays.toString(buffer), Toast.LENGTH_LONG).show();
+                if(bluetoothConnectThread!=null) {
+                    write(String.format("c %d %d", intPower, intPower));
+                }
             }
         });
         button_up.setOnClickListener(new View.OnClickListener() {
@@ -155,6 +175,21 @@ public class MainActivity extends AppCompatActivity {
     }
     private boolean checkBluetoothEnabled(){
         return bluetoothAdapter.isEnabled();
+    }
+
+    private void write(String command){
+        String[] symbols = command.split(" ");
+        byte[] buffer = new byte[symbols.length+1];
+        for(int i=0; i<symbols.length; i++){
+            String s = symbols[i];
+            try{
+                buffer[i] = ((Integer) Integer.parseInt(s)).byteValue();
+            } catch (NumberFormatException e){
+                buffer[0] = s.getBytes()[0];
+            }
+        }
+        buffer[buffer.length-1] = "$".getBytes()[0];
+        bluetoothConnectThread.inOutBluetoothThread.write(buffer);
     }
 
     private void showPairedDevices(){
