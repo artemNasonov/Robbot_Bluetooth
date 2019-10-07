@@ -28,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private Button button_down;
     private Button button_left;
     private Button button_right;
+    private Button disconnect;
 
     ArrayAdapter<String> pairedDevicesArrayAdapter;
 
@@ -86,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("HandlerLeak")
     private void initButtonsAndOther(){
         find_robbot = findViewById(R.id.find_robbot);
+        disconnect = findViewById(R.id.disconnect);
         button_up = findViewById(R.id.up_button);
         button_down = findViewById(R.id.down_button);
         button_left = findViewById(R.id.left_button);
@@ -116,10 +118,17 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        disconnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(bluetoothConnectThread!=null) bluetoothConnectThread.cancel();
+            }
+        });
         button_down.setOnClickListener(new View.OnClickListener() {
             @SuppressLint("DefaultLocale")
             @Override
             public void onClick(View v) {
+//                Toast.makeText(MainActivity.this, "Down", Toast.LENGTH_LONG).show();
                 if(String.valueOf(editText.getText()).equals("")) return;
                 power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
                 if(power==0){
@@ -157,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if(String.valueOf(editText.getText()).equals("")) return;
-                power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
+                power = Double.parseDouble(String.valueOf(editText.getText()))*0.005;
                 if(power==0){
                     write("C 0 0");
                     return;
