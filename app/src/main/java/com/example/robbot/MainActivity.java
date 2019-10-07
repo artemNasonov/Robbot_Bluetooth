@@ -20,7 +20,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.Arrays;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
@@ -51,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
             if(BluetoothDevice.ACTION_FOUND.equals(action)){
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 assert device != null;
+                if(!pairedDevices.contains(device))
                 pairedDevicesArrayAdapter.add(device.getName()+"\n"+device.getAddress());
             }
         }
@@ -96,11 +96,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleMessage(Message msg){
                 super.handleMessage(msg);
-                if(msg.what == 1){
-                    byte[] buffer;
-                    buffer = (byte[]) msg.obj;
-                    Toast.makeText(MainActivity.this, new String(buffer), Toast.LENGTH_LONG).show();
-                }
+//                if(msg.what == 1){
+//                    byte[] buffer;
+//                    buffer = (byte[]) msg.obj;
+//                    Toast.makeText(MainActivity.this, new String(buffer), Toast.LENGTH_LONG).show();
+//                }
             }
         };
         handler.sendEmptyMessage(0);
@@ -120,36 +120,76 @@ public class MainActivity extends AppCompatActivity {
             @SuppressLint("DefaultLocale")
             @Override
             public void onClick(View v) {
+                if(String.valueOf(editText.getText()).equals("")) return;
                 power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
+                if(power==0){
+                    write("C 0 0");
+                    return;
+                }
+                if(power<0 || power>1) return;
                 power = power*63+63;
                 Integer intPower = power.intValue();
-                byte[] buffer = new byte[4];
-                buffer[0] = "c".getBytes()[0];
-                buffer[1] = intPower.byteValue();
-                buffer[2] = intPower.byteValue();
-                buffer[3] = "$".getBytes()[0];
-                Toast.makeText(MainActivity.this, Arrays.toString(buffer), Toast.LENGTH_LONG).show();
                 if(bluetoothConnectThread!=null) {
                     write(String.format("c %d %d", intPower, intPower));
                 }
             }
         });
         button_up.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("DefaultLocale")
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, R.string.go_straight, Toast.LENGTH_SHORT).show();
+                if(String.valueOf(editText.getText()).equals("")) return;
+                power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
+                if(power==0){
+                    write("C 0 0");
+                    return;
+                }
+                if(power<=0 || power>1) return;
+                power = power*63;
+                Integer intPower = power.intValue();
+                if(bluetoothConnectThread!=null) {
+                    write(String.format("c %d %d", intPower, intPower));
+                }
             }
         });
         button_left.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("DefaultLocale")
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, R.string.go_left, Toast.LENGTH_SHORT).show();
+                if(String.valueOf(editText.getText()).equals("")) return;
+                power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
+                if(power==0){
+                    write("C 0 0");
+                    return;
+                }
+                if(power<0 || power>1) return;
+                power = power*63+63;
+                Integer intPowerLeft = power.intValue();
+                power = power-63;
+                Integer intPowerRight = power.intValue();
+                if(bluetoothConnectThread!=null) {
+                    write(String.format("c %d %d", intPowerLeft, intPowerRight));
+                }
             }
         });
         button_right.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("DefaultLocale")
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, R.string.go_right, Toast.LENGTH_SHORT).show();
+                if(String.valueOf(editText.getText()).equals("")) return;
+                power = Double.parseDouble(String.valueOf(editText.getText()))*0.01;
+                if(power==0){
+                    write("C 0 0");
+                    return;
+                }
+                if(power<0 || power>1) return;
+                power = power*63;
+                Integer intPowerLeft = power.intValue();
+                power = power+63;
+                Integer intPowerRight = power.intValue();
+                if(bluetoothConnectThread!=null) {
+                    write(String.format("c %d %d", intPowerLeft, intPowerRight));
+                }
             }
         });
     }
@@ -189,6 +229,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         buffer[buffer.length-1] = "$".getBytes()[0];
+        if(bluetoothConnectThread!=null && bluetoothConnectThread.inOutBluetoothThread!=null)
         bluetoothConnectThread.inOutBluetoothThread.write(buffer);
     }
 
